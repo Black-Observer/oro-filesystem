@@ -1,0 +1,11 @@
+[package]
+name = "obstruction-filesystem"
+version = "0.0.1"
+authors = ["A31Nesta"]
+license = "MIT OR Apache-2.0"
+description = """
+Filesystem access options for Obstruction.
+"""
+edition = "2021"
+
+[dependencies]
