@@ -1,10 +1,11 @@
 [package]
-name = "obstruction-filesystem"
+name = "oro-filesystem"
 version = "0.0.1"
 authors = ["A31Nesta"]
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/Black-Observer/obstruction-filesystem"
 description = """
-Filesystem access options for Obstruction.
+Read-Only Filesystem options for Obstruction.
 """
 edition = "2021"
 

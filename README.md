@@ -1,5 +1,6 @@
-# Obstruction Filesystem
+# <img src="assets/orofilesystem.svg" alt="ORO Filesystem" />
 
+**Obstruction Read-Only Filesystem**.   
 A library for accessing packed or unpacked files from the filesystem, ZIP files or *Obstruction Asset Package*s with a common API.
 
 One of the core components of **Obstruction**.
@@ -43,3 +44,11 @@ The actual file format is not meant to be human-readable but it's made of entrie
 ZIP files also use an index. This is just needed to know which ZIP file to check when we request a file.
 
 Since ZIP support is just an idea at the moment, there's no format decided yet.
+
+## FAQ
+
+#### Read-Only? Why?
+
+Because it's meant to be used for packed assets in games.  
+During development (while using the engine's editor), files are saved to the normal
+filesystem by using the normal filesystem. You don't need a library for that.
