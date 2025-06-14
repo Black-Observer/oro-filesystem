@@ -19,12 +19,16 @@ pub use readers::{FilesystemError, FilesystemResult};
 /// Reads the file in the indicated path and
 /// returns its contents as a string
 pub fn read_to_string(path: &str, config: &FilesystemConfig) -> FilesystemResult<String> {
-    println!("Reading file at {} using method {:?}", config.path(path), config.fs_type());
-    
     // Read files
     match config.fs_type() {
-        FilesystemType::Filesystem => readers::filesystem::read_to_string(&config.path(path)),
-        FilesystemType::AssetPackage => todo!(),
-        FilesystemType::ZIP => todo!(),
+        FilesystemType::Filesystem => {
+            println!("Reading file at v-filesystem path {} (real fs {})", path, config.path(path));
+            readers::filesystem::read_to_string(&config.path(path))
+        }
+        FilesystemType::AssetPackage => {
+            println!("Reading file at v-filesystem path {} (from OAP {})", path, config.root());
+            todo!()
+        }
+        FilesystemType::Aura => todo!(),
     }
 }

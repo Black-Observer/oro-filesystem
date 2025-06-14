@@ -46,3 +46,4 @@ impl Error for FilesystemError {}
 pub type FilesystemResult<T> = Result<T, FilesystemError>;
 
 pub mod filesystem;
+pub mod assetpackage;
