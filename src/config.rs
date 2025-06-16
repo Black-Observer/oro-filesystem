@@ -1,6 +1,8 @@
 use std::{ffi::OsString, fs, path::{Path}};
 
-use crate::{FilesystemError, FilesystemResult};
+use crate::{config::index::IndexFile, FilesystemError, FilesystemResult};
+
+pub mod index;
 
 /// Type of filesystem that we want to access.
 #[derive(Debug, PartialEq)]
@@ -12,12 +14,12 @@ pub enum FilesystemType {
 
 /// Configuration for Obstruction Filesystem. It has two parameters:
 /// - `root`: Relative (starting at executable's directory) path to the "root" of the virtual filesystem. `./` by default.
-/// - `indices`: The name of the indices file at the root directory. None in [`FilesystemType::Filesystem`] configurations.
+/// - `index`: The deserialized indices file. None in [`FilesystemType::Filesystem`] configurations.
 /// - `fs_type`: An enum with the type of filesystem (normal, asset package or zip). Autodetected.
 #[derive(Debug)]
 pub struct FilesystemConfig {
     root: String,
-    indices: Option<OsString>,
+    index: Option<IndexFile>,
     fs_type: FilesystemType
 }
 
@@ -26,27 +28,22 @@ impl FilesystemConfig {
     /// automatically detected filesystem type.
     pub fn new() -> FilesystemResult<Self> {
         let root = Self::get_usable_root("");
-        let (fs_type, indices) = Self::autodetect_filesystem(&root)?;
-        Ok(FilesystemConfig { root, indices, fs_type })
+        let (fs_type, index) = Self::autodetect_filesystem(&root)?;
+        Ok(FilesystemConfig { root, index, fs_type })
     }
     /// Constructs a configuration object with a root and an
-    /// automatically detected filesystem type (if expecting `AssetPackage`,
-    /// the `index.oapi` should be in the `root` folder).
+    /// automatically detected filesystem type.
     pub fn with_root(root: &str) -> FilesystemResult<Self> {
         let root = Self::get_usable_root(root);
-        let (fs_type, indices) = Self::autodetect_filesystem(&root)?;
-        Ok(FilesystemConfig { root, indices, fs_type })
+        let (fs_type, index) = Self::autodetect_filesystem(&root)?;
+        Ok(FilesystemConfig { root, index, fs_type })
     }
 
     /// Returns the Filesystem Type in this config
     pub fn fs_type(&self) -> &FilesystemType {
         &self.fs_type
     }
-    /// Returns the Root of this config. What the root is depends on the type of filesystem:
-    /// 
-    /// - [`FilesystemType::Filesystem`]: Path to the root directory of that virtual filesystem.
-    /// - [`FilesystemType::AssetPackage`]: Path to the Indices JSON file.
-    /// - [`FilesystemType::Aura`]: Path to the Aura JSON file.
+    /// Returns the path to the virtual filesystem.
     pub fn root(&self) -> String {
         self.root.clone()
     }
@@ -62,8 +59,8 @@ impl FilesystemConfig {
     /// if a `*.aura` file exists, [`FilesystemType::Aura`] is selected.
     /// if no indices file is found, [`FilesystemType::Filesystem`] is selected
     /// 
-    /// Returns a [`FilesystemType`] and an [`Option<OsString>`] with the name of the indices file
-    fn autodetect_filesystem(root: &str) -> FilesystemResult<(FilesystemType, Option<OsString>)> {
+    /// Returns a [`FilesystemType`] and an [`Option<IndexFile>`] with the contents of the indices file
+    fn autodetect_filesystem(root: &str) -> FilesystemResult<(FilesystemType, Option<IndexFile>)> {
         let path = Path::new(root);
         let files = match fs::read_dir(path) {
             Ok(f) => f,
@@ -81,9 +78,9 @@ impl FilesystemConfig {
                 let file_path_string = file_path.as_os_str().to_os_string();
 
                 if ext == "oapi" {
-                    return Ok((FilesystemType::AssetPackage, Some(file_path_string)))
+                    return Ok((FilesystemType::AssetPackage, None))
                 } else if ext == "aura" {
-                    return Ok((FilesystemType::Aura, Some(file_path_string)))
+                    return Ok((FilesystemType::Aura, None))
                 }
             }
         }
@@ -128,7 +125,7 @@ mod tests {
 
     #[test]
     fn check_filesystem_detection() -> FilesystemResult<()> {
-        let configuration = FilesystemConfig::with_root("     tests    ")?; // <- trimmed
+        let configuration = FilesystemConfig::with_root("     tests    ")?; // <- should be trimmed
         assert_eq!(*configuration.fs_type(), FilesystemType::Filesystem);
         Ok(())
     }
