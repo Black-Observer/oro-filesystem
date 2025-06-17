@@ -28,55 +28,57 @@ A game (or other program) can have one or more package but only one **index**.
 ### The Index
 
 The index is where every file in the package is registered. For simplicity, these
-files are JSONs that follow this structure:
+files are JSONs that follow this structure (represented in TypeScript):
 
 ```ts
-{
-    name: "", // empty. The root is always ignored
-    files: [
-        {
-            name: string,
-            package: string, // absolute path with this file as the root
-            starting_index: number,
+[
+    {
+        name: string,
+        index: {
+            package: string,
+            starting_size: number,
             file_size: number
         }
-    ],
-    directories: [
-        {
-            name: string,
-            files: [],
-            directories: []
-        }
-    ]
-}
+    }
+]
 ```
+- **`name`**: Full path from the virtual root to the file.
+- **`index`**: OAPI (or [Aura](#aura-todo)) information indicating where the file is located in the package.
+- **`package`**: Path from this OAPI file to the asset package containing the desired file. One OAPI file can index several packages
+- **`starting_index`**: The index of the first byte of the desired file in the Asset Package.
+- **`file_size`**: Total size of the file we want to read.
 
+## Aura
 
-## Aura [TODO]
+**Aurum Assets**. Aurum is a web server that allows you to install a mod (OAP or
+native Filesystem) in your server to allow anyone to try out and use mods without
+actually installing them.
 
-**Aurum Assets**. Aurum is a web server that allows you to try out mods without
-actually installing them. You just tell the game the server's URL and it patches
-the files and fetches the files whenever necessary.
+When you add the server to the in-game mod menu, the server generates and sends
+an Aura file.
 
-It is also based on JSON and follows a similar structure to normal indices, with
-the only difference being the `file` object:
+Aura files are also based on JSON and follows a similar structure to normal
+indices, with the only difference being the `index` object:
 
 ```ts
-{
-    name: string,
-    url: string,
-    hash: string | undefined
-}
+[
+    {
+        name: string,
+        index: {
+            url: string,
+            hash: string | null
+        }
+    }
+]
 ```
-- **name**: The name of the asset.
-- **url**: The URL of the file (raw file data).
-- **hash**: An optional field containing the hash of the file (**ALGORITHM TO BE DECIDED**). It ensures that the files haven't been altered since you added the Aura file. It doesn't indicate that a mod is safe and it may not even be what you want, for example in frequently updated mods or for Aurum modpacks that might even depend on more Aura files (likely killing performance).
+- **`url`**: The URL of the file (raw file data).
+- **`hash`**: An optional field containing the hash of the file (**ALGORITHM TO BE DECIDED**). It ensures that the files haven't been altered since you added the Aura file. It doesn't indicate that a mod is safe and it may not even be what you want, for example in frequently updated mods or for Aurum modpacks that might even depend on more Aura files (likely killing performance).
 
 ## FAQ
 
-#### Read-Only? Why?
+### Is this just for games?
 
-Because it's meant to be used for packed assets in games.  
-During development (while using the engine's editor), files are saved to the
-normal filesystem by using the normal filesystem. You don't need a library for
-that.
+Not really. It could be used anywhere else that requires read-only virtual
+filesystems. ORO Filesystem is made primarily for **Gamut** (*Game Mutability*,
+the Modding Framework that **Obstruction** is based on) so it is made
+primarily for game development.
