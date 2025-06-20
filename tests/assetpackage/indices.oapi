@@ -1,0 +1,18 @@
+[
+    {
+        "path": "virtualFolder/vfile1.txt",
+        "index": {
+            "package": "folder/example.oap",
+            "starting_index": 0,
+            "file_size": 10
+        }
+    },
+    {
+        "path": "virtualFolder/vfile1-copy.txt",
+        "index": {
+            "package": "folder/example.oap",
+            "starting_index": 11,
+            "file_size": 10
+        }
+    }
+]

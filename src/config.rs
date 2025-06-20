@@ -1,8 +1,9 @@
-use std::{ffi::OsString, fs, path::{Path}};
+use std::{fs, path::{Path}};
 
 use crate::{config::index::IndexFile, FilesystemError, FilesystemResult};
 
 pub mod index;
+pub mod assetmap;
 
 /// Type of filesystem that we want to access.
 #[derive(Debug, PartialEq)]
@@ -12,10 +13,10 @@ pub enum FilesystemType {
     Aura
 }
 
-/// Configuration for Obstruction Filesystem. It has two parameters:
+/// Configuration for Obstruction Filesystem. It has three attributes:
 /// - `root`: Relative (starting at executable's directory) path to the "root" of the virtual filesystem. `./` by default.
 /// - `index`: The deserialized indices file. None in [`FilesystemType::Filesystem`] configurations.
-/// - `fs_type`: An enum with the type of filesystem (normal, asset package or zip). Autodetected.
+/// - `fs_type`: An enum with the type of filesystem (normal, asset package or aura). Autodetected.
 #[derive(Debug)]
 pub struct FilesystemConfig {
     root: String,

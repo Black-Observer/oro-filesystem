@@ -5,9 +5,7 @@
 //! It allows you to access files from:
 //! - The normal filesystem
 //! - Packed Obstruction Asset Packages
-//! - ZIP files (maybe)
-//! 
-//! mbsfar
+//! - Aura files (Web-based file maps)
 
 mod config;
 mod readers;

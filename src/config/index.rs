@@ -1,34 +1,66 @@
+use std::{error::Error, fs, path::Path};
+
 use serde::{Deserialize, Serialize};
 
 /// the type of index data. It can be AssetPack or Aura
 /// and each value of the enum contains the data for that index
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum IndexType {
     AssetPack(AssetPackIndex),
     Aura(AuraIndex)
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+/// Data necessary to read files from Obstruction Asset Packages
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct AssetPackIndex {
-    package: String,
-    starting_index: u64,
-    file_size: u64 // could be u32 but I prefer to use 4 more bytes and support 4GB+ files even if I'll never use them
+    pub package: String,
+    pub starting_index: u64,
+    pub file_size: u64 // could be u32 but I prefer to use 4 more bytes and support 4GB+ files even if I'll never use them
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+/// Data necessary to read files from web-based asset maps (Aura)
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct AuraIndex {
-    url: String,
-    hash: Option<String>
+    pub url: String,
+    pub hash: Option<String>
 }
 
+/// A file and its Aura/OAP data
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct IndexEntry {
-    path: String,
-    index: IndexType
+    pub path: String,
+    pub index: IndexType
 }
 
-pub type IndexFile = Vec<IndexEntry>;
+/// A Vector of [`IndexEntry`]. Used to export and import index files
+#[derive(Debug)]
+pub struct IndexFile {
+    pub files: Vec<IndexEntry>
+}
+
+impl IndexEntry {
+    pub fn new(path: String, index: IndexType) -> Self {
+        IndexEntry { path, index }
+    }
+
+    pub fn path(&self) -> String {
+        self.path.clone()
+    }
+    pub fn index(&self) -> IndexType {
+        self.index.clone()
+    }
+}
+
+impl IndexFile {
+    pub fn from_file(path: &Path) -> Result<Self, Box<dyn Error>> {
+        let index_file_json = fs::read_to_string(path)?;
+        Self::from_str(&index_file_json)
+    }
+    pub fn from_str(contents: &str) -> Result<Self, Box<dyn Error>> {
+        Ok(IndexFile { files: serde_json::from_str(contents)? })
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -40,160 +72,172 @@ mod tests {
 
     #[test]
     fn serialize_aura() {
-        let index: IndexFile = vec![
-            IndexEntry {
-                path: String::from("virtualFolder/vfile1.txt"),
-                index: IndexType::Aura(AuraIndex {
-                    url: String::from("https://pastebin.com/raw/t0qjYDWt"),
-                    hash: None
-                })
-            },
-            IndexEntry {
-                path: String::from("virtualFolder/vfile1-copy.txt"),
-                index: IndexType::Aura(AuraIndex {
-                    url: String::from("https://pastebin.com/raw/t0qjYDWt"),
-                    hash: None
-                })
-            }
-        ];
+        let index: IndexFile = IndexFile {
+            files: vec![
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile1.txt"),
+                    index: IndexType::Aura(AuraIndex {
+                        url: String::from("https://pastebin.com/raw/t0qjYDWt"),
+                        hash: None
+                    })
+                },
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile1-copy.txt"),
+                    index: IndexType::Aura(AuraIndex {
+                        url: String::from("https://pastebin.com/raw/t0qjYDWt"),
+                        hash: None
+                    })
+                }
+            ] 
+        };
 
-        let serialized = serde_json::to_string(&index).expect("Error during serialization of Aura file");
+        let serialized = serde_json::to_string(&index.files).expect("Error during serialization of Aura file");
         assert_eq!(serialized, EXPECTED_AURA);
     }
 
     #[test]
     fn deserialize_serialized_aura() {
-        let original: IndexFile = vec![
-            IndexEntry {
-                path: String::from("virtualFolder/vfile1.txt"),
-                index: IndexType::Aura(AuraIndex {
-                    url: String::from("https://pastebin.com/raw/t0qjYDWt"),
-                    hash: None
-                })
-            },
-            IndexEntry {
-                path: String::from("virtualFolder/vfile1-copy.txt"),
-                index: IndexType::Aura(AuraIndex {
-                    url: String::from("https://pastebin.com/raw/t0qjYDWt"),
-                    hash: None
-                })
-            }
-        ];
+        let original: IndexFile = IndexFile {
+            files: vec![
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile1.txt"),
+                    index: IndexType::Aura(AuraIndex {
+                        url: String::from("https://pastebin.com/raw/t0qjYDWt"),
+                        hash: None
+                    })
+                },
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile1-copy.txt"),
+                    index: IndexType::Aura(AuraIndex {
+                        url: String::from("https://pastebin.com/raw/t0qjYDWt"),
+                        hash: None
+                    })
+                }
+            ]
+        };
 
-        let serialized = serde_json::to_string(&original).expect("Error during serialization of Aura file");
-        let deserialized: IndexFile = serde_json::from_str(&serialized).expect("Error during deserialization of Aura file");
+        let serialized = serde_json::to_string(&original.files).expect("Error during serialization of Aura file");
+        let deserialized: IndexFile = IndexFile::from_str(&serialized).expect("Error during deserialization of Aura file");
 
-        assert_eq!(deserialized.len(), original.len(), "Length of the deserialized file must be equal to that of the original ({}). Found {}", original.len(), deserialized.len());
-        for (index, index_entry) in original.iter().enumerate() {
-            assert_eq!(deserialized.get(index).unwrap(), index_entry, "Deserialized file entries must be the same as in the original");
+        assert_eq!(deserialized.files.len(), original.files.len(), "Length of the deserialized file must be equal to that of the original ({}). Found {}", original.files.len(), deserialized.files.len());
+        for (index, index_entry) in original.files.iter().enumerate() {
+            assert_eq!(deserialized.files.get(index).unwrap(), index_entry, "Deserialized file entries must be the same as in the original");
         }
     }
 
     #[test]
     fn serialize_oap() {
-        let index: IndexFile = vec![
-            IndexEntry {
-                path: String::from("virtualFolder/vfile1.txt"),
-                index: IndexType::AssetPack(AssetPackIndex {
-                    package: String::from("folder/example.oap"),
-                    starting_index: 0,
-                    file_size: 10
-                })
-            },
-            IndexEntry {
-                path: String::from("virtualFolder/vfile1-copy.txt"),
-                index: IndexType::AssetPack(AssetPackIndex {
-                    package: String::from("folder/example.oap"),
-                    starting_index: 11,
-                    file_size: 10
-                })
-            }
-        ];
+        let index: IndexFile = IndexFile {
+            files: vec![
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile1.txt"),
+                    index: IndexType::AssetPack(AssetPackIndex {
+                        package: String::from("folder/example.oap"),
+                        starting_index: 0,
+                        file_size: 10
+                    })
+                },
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile1-copy.txt"),
+                    index: IndexType::AssetPack(AssetPackIndex {
+                        package: String::from("folder/example.oap"),
+                        starting_index: 11,
+                        file_size: 10
+                    })
+                }
+            ]
+        };
 
-        let serialized = serde_json::to_string(&index).expect("Error during serialization of OAP file");
+        let serialized = serde_json::to_string(&index.files).expect("Error during serialization of OAP file");
         assert_eq!(serialized, EXPECTED_OAP);
     }
 
     #[test]
     fn deserialize_serialized_oap() {
-        let original: IndexFile = vec![
-            IndexEntry {
-                path: String::from("virtualFolder/vfile1.txt"),
-                index: IndexType::AssetPack(AssetPackIndex {
-                    package: String::from("folder/example.oap"),
-                    starting_index: 0,
-                    file_size: 10
-                })
-            },
-            IndexEntry {
-                path: String::from("virtualFolder/vfile1-copy.txt"),
-                index: IndexType::AssetPack(AssetPackIndex {
-                    package: String::from("folder/example.oap"),
-                    starting_index: 11,
-                    file_size: 10
-                })
-            }
-        ];
+        let original: IndexFile = IndexFile {
+            files: vec![
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile1.txt"),
+                    index: IndexType::AssetPack(AssetPackIndex {
+                        package: String::from("folder/example.oap"),
+                        starting_index: 0,
+                        file_size: 10
+                    })
+                },
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile1-copy.txt"),
+                    index: IndexType::AssetPack(AssetPackIndex {
+                        package: String::from("folder/example.oap"),
+                        starting_index: 11,
+                        file_size: 10
+                    })
+                }
+            ]
+        };
 
-        let serialized = serde_json::to_string(&original).expect("Error during serialization of OAP file");
-        let deserialized: IndexFile = serde_json::from_str(&serialized).expect("Error during deserialization of OAP file");
+        let serialized = serde_json::to_string(&original.files).expect("Error during serialization of OAP file");
+        let deserialized: IndexFile = IndexFile::from_str(&serialized).expect("Error during deserialization of OAP file");
 
-        assert_eq!(deserialized.len(), original.len(), "Length of the deserialized file must be equal to that of the original ({}). Found {}", original.len(), deserialized.len());
-        for (index, index_entry) in original.iter().enumerate() {
-            assert_eq!(deserialized.get(index).unwrap(), index_entry, "Deserialized file entries must be the same as in the original");
+        assert_eq!(deserialized.files.len(), original.files.len(), "Length of the deserialized file must be equal to that of the original ({}). Found {}", original.files.len(), deserialized.files.len());
+        for (index, index_entry) in original.files.iter().enumerate() {
+            assert_eq!(deserialized.files.get(index).unwrap(), index_entry, "Deserialized file entries must be the same as in the original");
         }
     }
 
     #[test]
     fn serialize_mixed() {
-        let index: IndexFile = vec![
-            IndexEntry {
-                path: String::from("virtualFolder/vfile-local.txt"),
-                index: IndexType::AssetPack(AssetPackIndex {
-                    package: String::from("folder/example.oap"),
-                    starting_index: 0,
-                    file_size: 10
-                })
-            },
-            IndexEntry {
-                path: String::from("virtualFolder/vfile-networked.txt"),
-                index: IndexType::Aura(AuraIndex {
-                    url: String::from("https://pastebin.com/raw/t0qjYDWt"),
-                    hash: None
-                })
-            }
-        ];
+        let index: IndexFile = IndexFile {
+            files: vec![
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile-local.txt"),
+                    index: IndexType::AssetPack(AssetPackIndex {
+                        package: String::from("folder/example.oap"),
+                        starting_index: 0,
+                        file_size: 10
+                    })
+                },
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile-networked.txt"),
+                    index: IndexType::Aura(AuraIndex {
+                        url: String::from("https://pastebin.com/raw/t0qjYDWt"),
+                        hash: None
+                    })
+                }
+            ]
+        };
 
-        let serialized = serde_json::to_string(&index).expect("Error during serialization of Mixed file");
+        let serialized = serde_json::to_string(&index.files).expect("Error during serialization of Mixed file");
         assert_eq!(serialized, EXPECTED_MIXED);
     }
 
     #[test]
     fn deserialize_serialized_mixed() {
-        let original: IndexFile = vec![
-            IndexEntry {
-                path: String::from("virtualFolder/vfile-local.txt"),
-                index: IndexType::AssetPack(AssetPackIndex {
-                    package: String::from("folder/example.oap"),
-                    starting_index: 0,
-                    file_size: 10
-                })
-            },
-            IndexEntry {
-                path: String::from("virtualFolder/vfile-networked.txt"),
-                index: IndexType::Aura(AuraIndex {
-                    url: String::from("https://pastebin.com/raw/t0qjYDWt"),
-                    hash: None
-                })
-            }
-        ];
+        let original: IndexFile = IndexFile {
+            files: vec![
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile-local.txt"),
+                    index: IndexType::AssetPack(AssetPackIndex {
+                        package: String::from("folder/example.oap"),
+                        starting_index: 0,
+                        file_size: 10
+                    })
+                },
+                IndexEntry {
+                    path: String::from("virtualFolder/vfile-networked.txt"),
+                    index: IndexType::Aura(AuraIndex {
+                        url: String::from("https://pastebin.com/raw/t0qjYDWt"),
+                        hash: None
+                    })
+                }
+            ]
+        };
 
-        let serialized = serde_json::to_string(&original).expect("Error during serialization of Mixed file");
-        let deserialized: IndexFile = serde_json::from_str(&serialized).expect("Error during deserialization of Mixed file");
+        let serialized = serde_json::to_string(&original.files).expect("Error during serialization of Mixed file");
+        let deserialized: IndexFile = IndexFile::from_str(&serialized).expect("Error during deserialization of Mixed file");
 
-        assert_eq!(deserialized.len(), original.len(), "Length of the deserialized file must be equal to that of the original ({}). Found {}", original.len(), deserialized.len());
-        for (index, index_entry) in original.iter().enumerate() {
-            assert_eq!(deserialized.get(index).unwrap(), index_entry, "Deserialized file entries must be the same as in the original");
+        assert_eq!(deserialized.files.len(), original.files.len(), "Length of the deserialized file must be equal to that of the original ({}). Found {}", original.files.len(), deserialized.files.len());
+        for (index, index_entry) in original.files.iter().enumerate() {
+            assert_eq!(deserialized.files.get(index).unwrap(), index_entry, "Deserialized file entries must be the same as in the original");
         }
     }
 }

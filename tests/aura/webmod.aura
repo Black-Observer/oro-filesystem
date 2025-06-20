@@ -1,0 +1,16 @@
+[
+    {
+        "path": "virtualFolder/vfile1.txt",
+        "index": {
+            "url": "https://pastebin.com/raw/t0qjYDWt",
+            "hash": null
+        }
+    },
+    {
+        "path": "virtualFolder/vfile1-copy.txt",
+        "index": {
+            "url": "https://pastebin.com/raw/t0qjYDWt",
+            "hash": null
+        }
+    }
+]
