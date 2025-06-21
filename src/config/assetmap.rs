@@ -1,42 +1,31 @@
 use std::collections::HashMap;
 
-use crate::config::index::{IndexEntry, IndexFile, IndexType};
+use crate::config::{index_errors::IndexError, index::{IndexFile, IndexType}};
 
 /// A [`HashMap`] containing all the paths and Aura/OAP data for every file in
 /// the Virtual Filesystem
 pub type AssetMap = HashMap<String, IndexType>;
 
-impl Into<IndexFile> for AssetMap {
-    /// **NOT RECOMMENDED**.  
-    /// Transforms an [`AssetMap`] into a serializable [`IndexFile`] without checking for errors in the data.
-    /// Validations include checking for negative numbers, checking for duplicate files and checking for overlapping
-    /// vfile data in OAPs.
-    /// Using unchecked files is inherently unsafe but it can potentially allow you to save space in OAPs, as well
-    /// as letting you create vfiles that represent slices of files. It's faster but risks crashes and can make
-    /// modding unstable.
-    fn into(self) -> IndexFile {
-        IndexFile {
-            files: self
-                .iter()
-                .map(|(key, value)| {
-                    IndexEntry::new(key.to_owned(), value.to_owned())
-                })
-                .collect()
-        }
-    }
-}
+impl TryFrom<IndexFile> for AssetMap {
+    type Error = IndexError;
+    
+    /// Transforms an [`IndexFile`] into an [`AssetMap`].  
+    /// This operation can fail if the [`IndexFile`] contains duplicate file entries.
+    /// 
+    /// This function does not check for negative numbers, because negative indices or file
+    /// sizes would already give an error while parsing the [`IndexFile`] from JSON (because
+    /// of `u64`s being unsigned).
+    fn try_from(value: IndexFile) -> Result<Self, Self::Error> {
+        let mut map = AssetMap::with_capacity(value.files.len());
 
-impl From<IndexFile> for AssetMap {
-    /// **NOT RECOMMENDED**.  
-    /// Creates an [`AssetMap`] from an [`IndexFile`] without checking the validity of the content.  
-    /// This can lead to unstable modding and crashes.
-    fn from(value: IndexFile) -> Self {
-        value.files
-            .iter()
-            .map(|element|
-                (element.path(), element.index())
-            )
-            .collect()
+        for file in value.files {
+            // If it's not some, we already had this path registered
+            if map.insert(file.path.clone(), file.index).is_some() {
+                return Err(IndexError::DuplicatePath(file.path));
+            }
+        }
+
+        Ok(map)
     }
 }
 
@@ -44,17 +33,15 @@ impl From<IndexFile> for AssetMap {
 mod tests {
     use std::{path::PathBuf, str::FromStr};
 
-    use crate::config::{assetmap::AssetMap, index::{AssetPackIndex, IndexFile, IndexType}};
+    use crate::config::{assetmap::AssetMap, index::{AssetPackIndex, IndexEntry, IndexFile, IndexType}, index_errors::IndexError};
 
-    const EXPECTED_OAP: &str = r#"[{"path":"virtualFolder/vfile1.txt","index":{"package":"folder/example.oap","starting_index":0,"file_size":10}},{"path":"virtualFolder/vfile1-copy.txt","index":{"package":"folder/example.oap","starting_index":11,"file_size":10}}]"#;
-
-    /// Serializes an OAPI file and checks its contents once converted to an [`AssetMap`] via [`Into`]
+    /// Serializes an OAPI file and checks its contents once converted to an [`AssetMap`] via [`TryFrom`]
     #[test]
-    fn unchecked_from_index_file() {
+    fn from_index_file() {
         let index_file = IndexFile::from_file(&PathBuf::from_str("tests/assetpackage/indices.oapi").unwrap())
             .expect("Couldn't read test file (tests/assetpackage/indices.oapi) or couldn't serialize");
 
-        let asset_map: AssetMap = index_file.into();
+        let asset_map: AssetMap = index_file.try_into().unwrap();
         assert!(asset_map.contains_key("virtualFolder/vfile1.txt"));
         let index_data = asset_map.get("virtualFolder/vfile1.txt").unwrap();
         if let IndexType::AssetPack(contents) = index_data {
@@ -66,9 +53,9 @@ mod tests {
         }
     }
 
-    /// Converts an [`AssetMap`] into an [`IndexFile`], serializes it and checks its contents against a constant string ([`EXPECTED_OAP`])
+    /// Converts an [`AssetMap`] into an [`IndexFile`], serializes it and checks its contents
     #[test]
-    fn unchecked_into_index_file() {
+    fn into_index_file() {
         let mut asset_map = AssetMap::new();
         asset_map.insert("virtualFolder/vfile1.txt".to_string(), IndexType::AssetPack(
             AssetPackIndex {
@@ -85,9 +72,51 @@ mod tests {
             }
         ));
 
-        let index_map: IndexFile = asset_map.into();
-        let serialized = serde_json::to_string(&index_map.files).expect("Error serializing index map obtained from asset map");
+        let index_file: IndexFile = asset_map.into();
 
-        assert_eq!(serialized, EXPECTED_OAP, "Mismatch between expected OAP file and Serialized OAP JSON obtained from unchecked AssetMap conversion to IndexFile");
+        // Two asserts because we don't know in which order the entries will appear
+        // because of the HashMap
+        assert!(
+            index_file.files.contains(&IndexEntry {
+                path: "virtualFolder/vfile1.txt".to_string(),
+                index: IndexType::AssetPack(
+                    AssetPackIndex {
+                        package: "folder/example.oap".to_string(),
+                        starting_index: 0,
+                        file_size: 10
+                    }
+                )
+            })
+        );
+        assert!(
+            index_file.files.contains(&IndexEntry {
+                path: "virtualFolder/vfile1-copy.txt".to_string(),
+                index: IndexType::AssetPack(
+                    AssetPackIndex {
+                        package: "folder/example.oap".to_string(),
+                        starting_index: 11,
+                        file_size: 10
+                    }
+                )
+            })
+        );
+    }
+
+    #[test]
+    fn from_index_file_duplicate_filenames() {
+        let index_file = IndexFile::from_file(&PathBuf::from_str("tests/errors/duplicate_paths.oapi").unwrap())
+            .expect("Couldn't read test file (tests/errors/duplicate_paths.oapi) or couldn't serialize");
+
+        let asset_map: Result<AssetMap, IndexError> = index_file.try_into();
+        asset_map.unwrap_err();
+    }
+
+    #[test]
+    fn from_index_file_negative_filesize() {
+        IndexFile::from_file(&PathBuf::from_str("tests/errors/negative_filesize.oapi").unwrap()).unwrap_err();
+    }
+    #[test]
+    fn from_index_file_negative_index() {
+        IndexFile::from_file(&PathBuf::from_str("tests/errors/negative_index.oapi").unwrap()).unwrap_err();
     }
 }

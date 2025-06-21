@@ -2,6 +2,7 @@ use std::{fs, path::{Path}};
 
 use crate::{config::index::IndexFile, FilesystemError, FilesystemResult};
 
+pub mod index_errors;
 pub mod index;
 pub mod assetmap;
 

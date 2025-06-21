@@ -2,6 +2,8 @@ use std::{error::Error, fs, path::Path};
 
 use serde::{Deserialize, Serialize};
 
+use crate::config::assetmap::AssetMap;
+
 /// the type of index data. It can be AssetPack or Aura
 /// and each value of the enum contains the data for that index
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -59,6 +61,24 @@ impl IndexFile {
     }
     pub fn from_str(contents: &str) -> Result<Self, Box<dyn Error>> {
         Ok(IndexFile { files: serde_json::from_str(contents)? })
+    }
+}
+
+impl From<AssetMap> for IndexFile {
+    /// Constructs an [`IndexFile`] from an [`AssetMap`].
+    /// This transformation cannot fail because:
+    /// 
+    /// - Indices cannot be negative in `u64` values
+    /// - Maps can't contain duplicate keys (no two files share the same path)
+    fn from(value: AssetMap) -> Self {
+        IndexFile {
+        files: value
+            .iter()
+            .map(|(map_key, map_value)| {
+                IndexEntry::new(map_key.to_owned(), map_value.to_owned())
+            })
+            .collect()
+        }
     }
 }
 
