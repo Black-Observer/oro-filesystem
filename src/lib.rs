@@ -31,7 +31,7 @@ pub fn read_to_string(path: &str, config: &FilesystemConfig) -> FilesystemResult
                     // Is this index an AssetPackage or an Aura file?
                     match index {
                         config::index::IndexType::AssetPack(asset_pack_index) => readers::assetpackage::read_to_string(path, &config.root(), &asset_pack_index),
-                        config::index::IndexType::Aura(aura_index) => todo!(),
+                        config::index::IndexType::Aura(aura_index) => readers::aura::read_to_string(&aura_index.url),
                     }
                 },
                 Err(e) => Err(e),
@@ -63,6 +63,17 @@ mod tests {
         assert_eq!(contents_f1, "hello, world! This is a test");
         assert_eq!(contents_f2, "hello, world! This is a test");
         assert_eq!(contents_f3, "When The imposter is sus!! This is a script or something.");
+        Ok(())
+    }
+
+    #[test]
+    fn read_from_aura() -> FilesystemResult<()> {
+        let config = FilesystemConfig::with_root("tests/aura")?;
+        let contents_f1 = read_to_string("virtualFolder/vfile1.txt", &config)?;
+        let contents_f2 = read_to_string("virtualFolder/vfile1-copy.txt", &config)?;
+
+        assert_eq!(contents_f1, "Hello, if you fetched this file from an Aura file, that means that ORO Filesystem is working!!");
+        assert_eq!(contents_f2, "Hello, if you fetched this file from an Aura file, that means that ORO Filesystem is working!!");
         Ok(())
     }
 }

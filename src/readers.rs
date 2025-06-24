@@ -28,6 +28,9 @@ pub enum FilesystemError {
     DuplicatePathsInIndex(String),
     /// Attempted to get index information from an unindexed filesystem (Native Filesystem)
     UnindexedFilesystem(String),
+    /// Any error that happens during the fetch of a web resource. The first parameter is the URL
+    /// and the second one is the error message.
+    FetchError(String, String),
     /// Any other type of error that I didn't want to add into this enum.   
     /// The first parameter is the path, the second one is the actual error's `to_string()`
     Generic(String, String)
@@ -45,6 +48,7 @@ impl Display for FilesystemError {
             FilesystemError::DuplicatePathsInIndex(path) => write!(f, "Duplicate path found in index file: {path}"),
             FilesystemError::DeserializationError(message) => write!(f, "Couldn't deserialize. Obtained error: {message}"),
             FilesystemError::UnindexedFilesystem(path) => write!(f, "Couldn't obtain index for file at \"{path}\". Filesystem is unindexed"),
+            FilesystemError::FetchError(url, errormsg) => write!(f, "Couldn't fetch web resource at \"{url}\". Reason: {errormsg}"),
             FilesystemError::Generic(path, reason) => write!(f, "Couldn't read \"{path}\".{}", if reason.is_empty() {String::new()} else {String::from(" Reason: ")+ reason}),
         }
     }
@@ -71,3 +75,4 @@ fn io_error_to_filesystem_error(path: String, error: std::io::Error) -> Filesyst
 
 pub mod filesystem;
 pub mod assetpackage;
+pub mod aura;
