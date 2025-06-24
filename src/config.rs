@@ -73,7 +73,7 @@ impl FilesystemConfig {
         }
     }
 
-    /// If a `*.oapi` or `*.aura` file exists, the indices are read and returned,
+    /// If a `*.oroi` file exists, the indices are read and returned,
     /// if no indices file is found, an index configuration of [`None`] is returned.
     /// 
     /// An index configuration of [`Some`] indicates that the filesystem is Indexed (Aura or AssetPackage),
@@ -93,7 +93,7 @@ impl FilesystemConfig {
             let file_path = entry.path();
             
             if let Some(ext) = file_path.extension() {
-                if ext == "oapi" || ext == "aura" {
+                if ext == "oroi" {
                     let index_file = IndexFile::from_file(&file_path)?;
                     let asset_map= AssetMap::try_from(index_file)?;
 

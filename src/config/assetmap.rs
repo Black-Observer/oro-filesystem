@@ -36,11 +36,11 @@ mod tests {
 
     use crate::{config::{assetmap::AssetMap, index::{AssetPackIndex, IndexEntry, IndexFile, IndexType}}, FilesystemResult};
 
-    /// Serializes an OAPI file and checks its contents once converted to an [`AssetMap`] via [`TryFrom`]
+    /// Serializes an OAPI OROI file and checks its contents once converted to an [`AssetMap`] via [`TryFrom`]
     #[test]
     fn from_index_file() {
-        let index_file = IndexFile::from_file(&PathBuf::from_str("tests/assetpackage/indices.oapi").unwrap())
-            .expect("Couldn't read test file (tests/assetpackage/indices.oapi) or couldn't serialize");
+        let index_file = IndexFile::from_file(&PathBuf::from_str("tests/assetpackage/indices.oroi").unwrap())
+            .expect("Couldn't read test file (tests/assetpackage/indices.oroi) or couldn't serialize");
 
         let asset_map: AssetMap = index_file.try_into().unwrap();
         assert!(asset_map.contains_key("virtualFolder/vfile1.txt"));
@@ -50,7 +50,7 @@ mod tests {
             assert_eq!(contents.starting_index, 0);
             assert_eq!(contents.file_size, 28);
         } else {
-            panic!("Expected oapi file to contain OAP data");
+            panic!("Expected oroi file to contain OAP data");
         }
     }
 
@@ -105,8 +105,8 @@ mod tests {
 
     #[test]
     fn from_index_file_duplicate_filenames() {
-        let index_file = IndexFile::from_file(&PathBuf::from_str("tests/errors/duplicate_paths.oapi").unwrap())
-            .expect("Couldn't read test file (tests/errors/duplicate_paths.oapi) or couldn't serialize");
+        let index_file = IndexFile::from_file(&PathBuf::from_str("tests/errors/duplicate_paths.oroi").unwrap())
+            .expect("Couldn't read test file (tests/errors/duplicate_paths.oroi) or couldn't serialize");
 
         let asset_map: FilesystemResult<AssetMap> = index_file.try_into();
         asset_map.unwrap_err();
@@ -114,10 +114,10 @@ mod tests {
 
     #[test]
     fn from_index_file_negative_filesize() {
-        IndexFile::from_file(&PathBuf::from_str("tests/errors/negative_filesize.oapi").unwrap()).unwrap_err();
+        IndexFile::from_file(&PathBuf::from_str("tests/errors/negative_filesize.oroi").unwrap()).unwrap_err();
     }
     #[test]
     fn from_index_file_negative_index() {
-        IndexFile::from_file(&PathBuf::from_str("tests/errors/negative_index.oapi").unwrap()).unwrap_err();
+        IndexFile::from_file(&PathBuf::from_str("tests/errors/negative_index.oroi").unwrap()).unwrap_err();
     }
 }
