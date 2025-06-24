@@ -1,8 +1,7 @@
 use std::{fs, path::{Path}};
 
-use crate::{config::index::IndexFile, FilesystemError, FilesystemResult};
+use crate::{config::{assetmap::AssetMap, index::{IndexFile, IndexType}}, FilesystemError, FilesystemResult};
 
-pub mod index_errors;
 pub mod index;
 pub mod assetmap;
 
@@ -10,19 +9,16 @@ pub mod assetmap;
 #[derive(Debug, PartialEq)]
 pub enum FilesystemType {
     Filesystem,
-    AssetPackage,
-    Aura
+    Indexed
 }
 
 /// Configuration for Obstruction Filesystem. It has three attributes:
 /// - `root`: Relative (starting at executable's directory) path to the "root" of the virtual filesystem. `./` by default.
-/// - `index`: The deserialized indices file. None in [`FilesystemType::Filesystem`] configurations.
-/// - `fs_type`: An enum with the type of filesystem (normal, asset package or aura). Autodetected.
+/// - `index`: The deserialized indices file. None in [`FilesystemType::Filesystem`] configurations, Some in any Indexed configuration (Aura or AssetPackage)
 #[derive(Debug)]
 pub struct FilesystemConfig {
     root: String,
-    index: Option<IndexFile>,
-    fs_type: FilesystemType
+    index: Option<AssetMap>
 }
 
 impl FilesystemConfig {
@@ -30,20 +26,23 @@ impl FilesystemConfig {
     /// automatically detected filesystem type.
     pub fn new() -> FilesystemResult<Self> {
         let root = Self::get_usable_root("");
-        let (fs_type, index) = Self::autodetect_filesystem(&root)?;
-        Ok(FilesystemConfig { root, index, fs_type })
+        let index = Self::autodetect_filesystem(&root)?;
+        Ok(FilesystemConfig { root, index })
     }
     /// Constructs a configuration object with a root and an
     /// automatically detected filesystem type.
     pub fn with_root(root: &str) -> FilesystemResult<Self> {
         let root = Self::get_usable_root(root);
-        let (fs_type, index) = Self::autodetect_filesystem(&root)?;
-        Ok(FilesystemConfig { root, index, fs_type })
+        let index = Self::autodetect_filesystem(&root)?;
+        Ok(FilesystemConfig { root, index })
     }
-
-    /// Returns the Filesystem Type in this config
-    pub fn fs_type(&self) -> &FilesystemType {
-        &self.fs_type
+    
+    /// Returns the type of Filesystem in this configuration
+    pub fn fs_type(&self) -> FilesystemType {
+        match self.index {
+            Some(_) => FilesystemType::Indexed,
+            None => FilesystemType::Filesystem,
+        }
     }
     /// Returns the path to the virtual filesystem.
     pub fn root(&self) -> String {
@@ -56,13 +55,30 @@ impl FilesystemConfig {
         c + path
     }
 
-
-    /// If a `*.oapi` file exists, [`FilesystemType::AssetPackage`] is selected,
-    /// if a `*.aura` file exists, [`FilesystemType::Aura`] is selected.
-    /// if no indices file is found, [`FilesystemType::Filesystem`] is selected
+    /// Returns the index information for a file.   
+    /// It simply returns a Value in the [`AssetMap`] for the
+    /// Key passed as a parameter.
     /// 
-    /// Returns a [`FilesystemType`] and an [`Option<IndexFile>`] with the contents of the indices file
-    fn autodetect_filesystem(root: &str) -> FilesystemResult<(FilesystemType, Option<IndexFile>)> {
+    /// This can fail if a filesystem is unindexed (like the native filesystem),
+    /// or if the file is not found.
+    pub fn get_index_for_file(&self, path: &str) -> FilesystemResult<IndexType> {
+        match &self.index {
+            Some(asset_map) => {
+                match asset_map.get(path) {
+                    Some(index) => Ok(index.clone()),
+                    None => Err(FilesystemError::NotFound(path.to_string())),
+                }
+            }
+            None => Err(FilesystemError::UnindexedFilesystem(path.to_string())),
+        }
+    }
+
+    /// If a `*.oapi` or `*.aura` file exists, the indices are read and returned,
+    /// if no indices file is found, an index configuration of [`None`] is returned.
+    /// 
+    /// An index configuration of [`Some`] indicates that the filesystem is Indexed (Aura or AssetPackage),
+    /// an index configuration of [`None`] indicates that it is Unindexed (Native Filesystem)
+    fn autodetect_filesystem(root: &str) -> FilesystemResult<Option<AssetMap>> {
         let path = Path::new(root);
         let files = match fs::read_dir(path) {
             Ok(f) => f,
@@ -77,17 +93,16 @@ impl FilesystemConfig {
             let file_path = entry.path();
             
             if let Some(ext) = file_path.extension() {
-                let file_path_string = file_path.as_os_str().to_os_string();
+                if ext == "oapi" || ext == "aura" {
+                    let index_file = IndexFile::from_file(&file_path)?;
+                    let asset_map= AssetMap::try_from(index_file)?;
 
-                if ext == "oapi" {
-                    return Ok((FilesystemType::AssetPackage, None))
-                } else if ext == "aura" {
-                    return Ok((FilesystemType::Aura, None))
+                    return Ok(Some(asset_map))
                 }
             }
         }
         
-        return Ok((FilesystemType::Filesystem, None));
+        return Ok(None);
     }
 
     fn get_usable_root(root: &str) -> String {
@@ -114,21 +129,21 @@ mod tests {
     #[test]
     fn check_assetpackage_detection() -> FilesystemResult<()> {
         let configuration = FilesystemConfig::with_root("tests/assetpackage")?;
-        assert_eq!(*configuration.fs_type(), FilesystemType::AssetPackage);
+        assert_eq!(configuration.fs_type(), FilesystemType::Indexed);
         Ok(())
     }
 
     #[test]
     fn check_aura_detection() -> FilesystemResult<()> {
         let configuration = FilesystemConfig::with_root("tests/aura")?;
-        assert_eq!(*configuration.fs_type(), FilesystemType::Aura);
+        assert_eq!(configuration.fs_type(), FilesystemType::Indexed);
         Ok(())
     }
 
     #[test]
     fn check_filesystem_detection() -> FilesystemResult<()> {
         let configuration = FilesystemConfig::with_root("     tests    ")?; // <- should be trimmed
-        assert_eq!(*configuration.fs_type(), FilesystemType::Filesystem);
+        assert_eq!(configuration.fs_type(), FilesystemType::Filesystem);
         Ok(())
     }
 }

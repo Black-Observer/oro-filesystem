@@ -1,8 +1,8 @@
-use std::{error::Error, fs, path::Path};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::assetmap::AssetMap;
+use crate::{config::assetmap::AssetMap, readers::filesystem::read_to_string, FilesystemError, FilesystemResult};
 
 /// the type of index data. It can be AssetPack or Aura
 /// and each value of the enum contains the data for that index
@@ -55,12 +55,16 @@ impl IndexEntry {
 }
 
 impl IndexFile {
-    pub fn from_file(path: &Path) -> Result<Self, Box<dyn Error>> {
-        let index_file_json = fs::read_to_string(path)?;
+    pub fn from_file(path: &Path) -> FilesystemResult<Self> {
+        let index_file_json = read_to_string(&path.as_os_str().to_string_lossy())?;
         Self::from_str(&index_file_json)
     }
-    pub fn from_str(contents: &str) -> Result<Self, Box<dyn Error>> {
-        Ok(IndexFile { files: serde_json::from_str(contents)? })
+    pub fn from_str(contents: &str) -> FilesystemResult<Self> {
+        let files = match serde_json::from_str(contents) {
+            Ok(f) => f,
+            Err(e) => return Err(FilesystemError::DeserializationError(e.to_string())),
+        };
+        Ok(IndexFile { files })
     }
 }
 

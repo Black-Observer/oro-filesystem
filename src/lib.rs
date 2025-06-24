@@ -23,10 +23,9 @@ pub fn read_to_string(path: &str, config: &FilesystemConfig) -> FilesystemResult
             println!("Reading file at v-filesystem path {} (real fs {})", path, config.path(path));
             readers::filesystem::read_to_string(&config.path(path))
         }
-        FilesystemType::AssetPackage => {
-            println!("Reading file at v-filesystem path {} (from OAP {})", path, config.root());
+        FilesystemType::Indexed => {
+            println!("Reading file at v-filesystem path {} (from indexed fs {})", path, config.root());
             todo!()
         }
-        FilesystemType::Aura => todo!(),
     }
 }

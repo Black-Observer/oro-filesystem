@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
-use crate::config::{index_errors::IndexError, index::{IndexFile, IndexType}};
+use crate::{config::index::{IndexFile, IndexType}, FilesystemError};
 
 /// A [`HashMap`] containing all the paths and Aura/OAP data for every file in
 /// the Virtual Filesystem
 pub type AssetMap = HashMap<String, IndexType>;
 
 impl TryFrom<IndexFile> for AssetMap {
-    type Error = IndexError;
+    type Error = FilesystemError;
     
     /// Transforms an [`IndexFile`] into an [`AssetMap`].  
-    /// This operation can fail if the [`IndexFile`] contains duplicate file entries.
+    /// This operation can fail if the [`IndexFile`] contains duplicate file entries. In this case,
+    /// [`FilesystemError::DuplicatePathsInIndex`] will be returned
     /// 
     /// This function does not check for negative numbers, because negative indices or file
     /// sizes would already give an error while parsing the [`IndexFile`] from JSON (because
@@ -21,7 +22,7 @@ impl TryFrom<IndexFile> for AssetMap {
         for file in value.files {
             // If it's not some, we already had this path registered
             if map.insert(file.path.clone(), file.index).is_some() {
-                return Err(IndexError::DuplicatePath(file.path));
+                return Err(FilesystemError::DuplicatePathsInIndex(file.path));
             }
         }
 
@@ -33,7 +34,7 @@ impl TryFrom<IndexFile> for AssetMap {
 mod tests {
     use std::{path::PathBuf, str::FromStr};
 
-    use crate::config::{assetmap::AssetMap, index::{AssetPackIndex, IndexEntry, IndexFile, IndexType}, index_errors::IndexError};
+    use crate::{config::{assetmap::AssetMap, index::{AssetPackIndex, IndexEntry, IndexFile, IndexType}}, FilesystemResult};
 
     /// Serializes an OAPI file and checks its contents once converted to an [`AssetMap`] via [`TryFrom`]
     #[test]
@@ -45,9 +46,9 @@ mod tests {
         assert!(asset_map.contains_key("virtualFolder/vfile1.txt"));
         let index_data = asset_map.get("virtualFolder/vfile1.txt").unwrap();
         if let IndexType::AssetPack(contents) = index_data {
-            assert_eq!(contents.package, String::from("folder/example.oap"));
+            assert_eq!(contents.package, String::from("package.oap"));
             assert_eq!(contents.starting_index, 0);
-            assert_eq!(contents.file_size, 10);
+            assert_eq!(contents.file_size, 28);
         } else {
             panic!("Expected oapi file to contain OAP data");
         }
@@ -107,7 +108,7 @@ mod tests {
         let index_file = IndexFile::from_file(&PathBuf::from_str("tests/errors/duplicate_paths.oapi").unwrap())
             .expect("Couldn't read test file (tests/errors/duplicate_paths.oapi) or couldn't serialize");
 
-        let asset_map: Result<AssetMap, IndexError> = index_file.try_into();
+        let asset_map: FilesystemResult<AssetMap> = index_file.try_into();
         asset_map.unwrap_err();
     }
 
