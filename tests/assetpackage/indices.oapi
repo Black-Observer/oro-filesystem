@@ -11,8 +11,16 @@
         "path": "virtualFolder/vfile1-copy.txt",
         "index": {
             "package": "package.oap",
-            "starting_index": 29,
+            "starting_index": 28,
             "file_size": 28
+        }
+    },
+    {
+        "path": "otherFolder/someScript.lua",
+        "index": {
+            "package": "package.oap",
+            "starting_index": 56,
+            "file_size": 57
         }
     }
 ]

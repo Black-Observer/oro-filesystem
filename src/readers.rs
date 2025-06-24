@@ -56,5 +56,18 @@ impl Error for FilesystemError {}
 /// or a [FilesystemError].
 pub type FilesystemResult<T> = Result<T, FilesystemError>;
 
+fn io_error_to_filesystem_error(path: String, error: std::io::Error) -> FilesystemError {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => FilesystemError::NotFound(path),
+        std::io::ErrorKind::PermissionDenied => FilesystemError::PermissionDenied(path),
+        std::io::ErrorKind::BrokenPipe => FilesystemError::BrokenPipe(path),
+        std::io::ErrorKind::NotADirectory => FilesystemError::NotADirectory(path),
+        std::io::ErrorKind::IsADirectory => FilesystemError::IsADirectory(path),
+        std::io::ErrorKind::UnexpectedEof => FilesystemError::UnexpectedEof(path),
+        std::io::ErrorKind::OutOfMemory => FilesystemError::OutOfMemory(path),
+        _ => FilesystemError::Generic(path, error.to_string()),
+    }
+}
+
 pub mod filesystem;
 pub mod assetpackage;
