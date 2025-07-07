@@ -40,10 +40,34 @@ pub fn read_to_string(path: &str, config: &FilesystemConfig) -> FilesystemResult
     }
 }
 
+/// Reads the file in the indicated path and
+/// returns its contents as binary
+pub fn read(path: &str, config: &FilesystemConfig) -> FilesystemResult<Vec<u8>> {
+    // Read files
+    match config.fs_type() {
+        FilesystemType::Filesystem => {
+            readers::filesystem::read(&config.path(path))
+        }
+        FilesystemType::Indexed => {
+            // Does this path have an index?
+            match config.get_index_for_file(path) {
+                Ok(index) => {
+                    // Is this index an AssetPackage or an Aura file?
+                    match index {
+                        config::index::IndexType::AssetPack(asset_pack_index) => readers::assetpackage::read(path, &config.root(), &asset_pack_index),
+                        config::index::IndexType::Aura(aura_index) => readers::aura::read(&aura_index.url),
+                    }
+                },
+                Err(e) => Err(e),
+            }
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
-    use crate::{read_to_string, FilesystemConfig, FilesystemResult};
+    use crate::{read_to_string, read, FilesystemConfig, FilesystemResult};
 
     /// not much to test here
     #[test]
@@ -60,9 +84,14 @@ mod tests {
         let contents_f2 = read_to_string("virtualFolder/vfile1-copy.txt", &config)?;
         let contents_f3 = read_to_string("otherFolder/someScript.lua", &config)?;
 
+        let contents_bin = read("binaries/example.bin", &config)?;
+        let expected_bin = vec![0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x21];
+
         assert_eq!(contents_f1, "hello, world! This is a test");
         assert_eq!(contents_f2, "hello, world! This is a test");
         assert_eq!(contents_f3, "When The imposter is sus!! This is a script or something.");
+        
+        assert_eq!(contents_bin, expected_bin);
         Ok(())
     }
 
@@ -72,8 +101,13 @@ mod tests {
         let contents_f1 = read_to_string("virtualFolder/vfile1.txt", &config)?;
         let contents_f2 = read_to_string("virtualFolder/vfile1-copy.txt", &config)?;
 
+        let contents_bin = read("binaries/example.bin", &config)?;
+        let expected_bin = vec![0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x21];
+
         assert_eq!(contents_f1, "Hello, if you fetched this file from an Aura file, that means that ORO Filesystem is working!!");
         assert_eq!(contents_f2, "Hello, if you fetched this file from an Aura file, that means that ORO Filesystem is working!!");
+
+        assert_eq!(contents_bin, expected_bin);
         Ok(())
     }
 }

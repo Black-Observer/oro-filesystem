@@ -9,7 +9,7 @@ use crate::{
 
 use super::FilesystemResult;
 
-pub fn read_to_string(path: &str, root: &str, index: &AssetPackIndex) -> FilesystemResult<String> {
+pub fn read(path: &str, root: &str, index: &AssetPackIndex) -> FilesystemResult<Vec<u8>> {
     let package_path = String::from(root) + &index.package;
 
     let mut package = match File::open(&package_path) {
@@ -33,6 +33,12 @@ pub fn read_to_string(path: &str, root: &str, index: &AssetPackIndex) -> Filesys
     if bytes_read < index.file_size {
         return Err(FilesystemError::UnexpectedEof(path.to_string()));
     }
+
+    Ok(buffer)
+}
+
+pub fn read_to_string(path: &str, root: &str, index: &AssetPackIndex) -> FilesystemResult<String> {
+    let buffer = read(path, root, index)?;
 
     match String::from_utf8(buffer) {
         Ok(string) => Ok(string),

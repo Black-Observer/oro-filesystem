@@ -12,5 +12,12 @@
             "url": "https://pastebin.com/raw/t0qjYDWt",
             "hash": null
         }
+    },
+    {
+        "path": "binaries/example.bin",
+        "index": {
+            "url": "https://pastebin.com/raw/eQe9aqfZ",
+            "hash": null
+        }
     }
 ]

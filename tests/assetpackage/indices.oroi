@@ -22,5 +22,13 @@
             "starting_index": 56,
             "file_size": 57
         }
+    },
+    {
+        "path": "binaries/example.bin",
+        "index": {
+            "package": "package.oap",
+            "starting_index": 113,
+            "file_size": 13
+        }
     }
 ]
