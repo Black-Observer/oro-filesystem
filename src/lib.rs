@@ -9,6 +9,7 @@
 
 mod config;
 mod readers;
+mod packager;
 
 // Config re-exports
 pub use config::{FilesystemConfig, FilesystemType};
