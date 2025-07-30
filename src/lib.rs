@@ -15,6 +15,9 @@ mod packager;
 pub use config::{FilesystemConfig, FilesystemType};
 pub use readers::{FilesystemError, FilesystemResult};
 
+// Packager re-export
+pub use packager::pack;
+
 /// Reads the file in the indicated path and
 /// returns its contents as a string
 pub fn read_to_string(path: &str, config: &FilesystemConfig) -> FilesystemResult<String> {

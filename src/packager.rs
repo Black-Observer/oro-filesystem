@@ -4,9 +4,9 @@
 //! This requires an input directory that we can recursively read and an
 //! output directory for the package an index
 
-use std::path::{Path, PathBuf};
+use std::{fs::File, path::{Path, PathBuf}};
 
-use crate::{FilesystemError, FilesystemResult};
+use crate::{config::{assetmap::AssetMap, secure_path::BoundChecker}, FilesystemError, FilesystemResult};
 
 /// Used when reading 
 struct FsObjectsList {
@@ -27,10 +27,9 @@ fn scan_directory(directory: &Path) -> FilesystemResult<FsObjectsList> {
         return Err(FilesystemError::IsADirectory(path_to_string(directory)))
     }
 
-    let content = match directory.read_dir() {
-        Ok(read_dir) => read_dir,
-        Err(e) => return Err(FilesystemError::Generic(path_to_string(directory), e.to_string())),
-    };
+    let content = directory.read_dir().map_err(|e| 
+        FilesystemError::from(e).with_path(path_to_string(directory))
+    )?;
 
     let mut fs_objects_list = FsObjectsList {
         files: Vec::new(),
@@ -56,10 +55,25 @@ fn scan_directory(directory: &Path) -> FilesystemResult<FsObjectsList> {
     Ok(fs_objects_list)
 }
 
+/// Appends the contents of a file into a destination file and registers
+/// the file in the provided [`AssetMap`].
+fn append_file(bound_checker: &BoundChecker, input_file: &Path, output_file: &Path, asset_map: &mut AssetMap) -> FilesystemResult<()> {
+    // We propagate the error because filesystems with out of bounds files are unsafe.
+    // This function already checks for bounds so if the function continues it means the file is in bounds.
+    let relative_path = bound_checker.get_relative_string(input_file)?;
+
+    // write to output file
+    let source = File::open(input_file)?;
+    Ok(())
+}
+
 /// Recursively reads an input directory, builds an Asset Package and
 /// saves it into the output directory.
+/// 
+/// The files are divided into chunks, large files are never fully
+/// loaded into memory.
 pub fn pack(input: &Path, output: &Path) -> FilesystemResult<()> {
-
+    
     Ok(())
 }
 

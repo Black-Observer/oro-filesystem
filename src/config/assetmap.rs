@@ -20,7 +20,7 @@ impl TryFrom<IndexFile> for AssetMap {
         let mut map = AssetMap::with_capacity(value.files.len());
 
         for file in value.files {
-            // If it's not some, we already had this path registered
+            // If it's some, we already had this path registered
             if map.insert(file.path.clone(), file.index).is_some() {
                 return Err(FilesystemError::DuplicatePathsInIndex(file.path));
             }

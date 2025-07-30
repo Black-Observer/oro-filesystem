@@ -4,6 +4,7 @@ use crate::{config::{assetmap::AssetMap, index::{IndexFile, IndexType}}, Filesys
 
 pub mod index;
 pub mod assetmap;
+pub mod secure_path;
 
 /// Type of filesystem that we want to access.
 #[derive(Debug, PartialEq)]
