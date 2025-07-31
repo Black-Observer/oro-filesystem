@@ -22,9 +22,12 @@ struct OutputPackageFile {
 
 impl OutputPackageFile {
     pub fn new(path: &Path) -> FilesystemResult<Self> {
+        Self::delete_file(path)?;
+
         let destination = OpenOptions::new()
             .write(true)
             .append(true)
+            .create_new(true)
             .open(path)
             .map_err(|e| FilesystemError::from(e).with_path(path_to_string(path)))?
         ;
@@ -38,6 +41,14 @@ impl OutputPackageFile {
             }
         )
     }
+
+    /// If the file already exists, deletes it.
+    fn delete_file(path: &Path) -> FilesystemResult<()> {
+        if path.exists() {
+            fs::remove_file(path)?;
+        }
+        Ok(())
+    } 
 }
 
 /// Converts a path into a String. Invalid unicode will get f*cked but
@@ -160,9 +171,9 @@ pub fn pack(input: &Path, output: &Path, name_no_extension: &str) -> FilesystemR
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::{self, read_to_string}, path::Path};
+    use std::{fs, path::Path};
 
-    use crate::{pack, packager::scan_directory, FilesystemResult};
+    use crate::{pack, packager::scan_directory, FilesystemConfig, FilesystemResult};
 
     #[test]
     fn scan_tests_directory() -> FilesystemResult<()> {
@@ -173,7 +184,7 @@ mod tests {
 
         // Tests that files are correct
         assert_eq!(output.files.len(), 1);
-        assert_eq!(read_to_string(output.files.get(0).unwrap()).unwrap(), "This tests that the scanner can read files and directories".to_string());
+        assert_eq!(fs::read_to_string(output.files.get(0).unwrap()).unwrap(), "This tests that the scanner can read files and directories".to_string());
 
         Ok(())
     }
@@ -183,6 +194,13 @@ mod tests {
         // We need to create the directory if it doesn't exist
         fs::create_dir_all("tests_packed").expect("Shouldn't happen???");
         pack(Path::new("tests"), Path::new("tests_packed"), "tests_pack")?;
+
+        let config = FilesystemConfig::with_root("tests_packed")?;
+        let hello_world = crate::read_to_string("filesystem/testfile.txt", &config)?;
+        let dummy_package = crate::read_to_string("assetpackage/package.oap", &config)?;
+
+        assert_eq!(hello_world, "Hello, World!");
+        assert_eq!(dummy_package, "hello, world! This is a testhello, world! This is a testWhen The imposter is sus!! This is a script or something.Hello, World!");
 
         Ok(())
     }
