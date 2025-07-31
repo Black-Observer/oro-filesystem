@@ -20,8 +20,8 @@ pub fn read(path: &str, root: &str, index: &AssetPackIndex) -> FilesystemResult<
     }
 
     // read `index.file_size` bytes
-    let mut buffer = vec![0u8; index.file_size];
-    let bytes_read = package.read(&mut buffer).map_err(|e| FilesystemError::from(e).with_path(path.to_string()))?;
+    let mut buffer = vec![0u8; index.file_size as usize];
+    let bytes_read = package.read(&mut buffer).map_err(|e| FilesystemError::from(e).with_path(path.to_string()))? as u64;
 
     // this can happen if the file doesn't have that many bytes.
     if bytes_read < index.file_size {

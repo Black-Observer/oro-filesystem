@@ -2,8 +2,9 @@ use std::{error::Error, fmt::Display};
 
 /// Any error that could happen while reading from the filesystem.
 /// 
-/// It is a subset of the [`std::io::ErrorKind`] enum that only includes
-/// common Reading errors
+/// It contains a subset of the [`std::io::ErrorKind`] enum that only includes
+/// common Reading errors as well as some custom errors specific to functions of
+/// this library.
 #[derive(Debug)]
 pub enum FilesystemError {
     /// Refer to [`std::io::ErrorKind::NotFound`]
@@ -23,6 +24,9 @@ pub enum FilesystemError {
     /// An error that occurred while reading a serialized file.  
     /// The parameter is the error message obtained from [`serde_json`].
     DeserializationError(String),
+    /// An error that occurred while serializing a file.  
+    /// The parameter is the error message obtained from [`serde_json`].
+    SerializationError(String),
     /// An index file contained multiple definitions for one single
     /// file
     DuplicatePathsInIndex(String),
@@ -51,6 +55,7 @@ impl Display for FilesystemError {
             FilesystemError::OutOfMemory(path) => write!(f, "Can't load this chunky-ass file (out of memory): \"{path}\""),
             FilesystemError::DuplicatePathsInIndex(path) => write!(f, "Duplicate path found in index file: {path}"),
             FilesystemError::DeserializationError(message) => write!(f, "Couldn't deserialize. Obtained error: {message}"),
+            FilesystemError::SerializationError(message) => write!(f, "Couldn't serialize. Obtained error: {message}"),
             FilesystemError::UnindexedFilesystem(path) => write!(f, "Couldn't obtain index for file at \"{path}\". Filesystem is unindexed"),
             FilesystemError::FetchError(url, errormsg) => write!(f, "Couldn't fetch web resource at \"{url}\". Reason: {errormsg}"),
             FilesystemError::OutOfBounds(path, root) => write!(f, "Can't access \"{path}\". Resource outside directory \"{root}\""),

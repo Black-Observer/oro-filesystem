@@ -1,1 +1,6 @@
 /target
+
+# Used to test packing a directory
+# It's the same as /tests but packed in an Asset Package
+# It should be automatically created and can be safely deleted
+/tests_packed

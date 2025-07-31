@@ -18,7 +18,7 @@ pub enum IndexType {
 pub struct AssetPackIndex {
     pub package: String,
     pub starting_index: u64,
-    pub file_size: usize
+    pub file_size: u64
 }
 
 /// Data necessary to read files from web-based asset maps (Aura)
