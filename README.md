@@ -76,7 +76,7 @@ files are JSONs that follow this structure (represented in TypeScript):
 ```ts
 [
     {
-        name: string,
+        path: string,
         index: {
             package: string,
             starting_size: number,
@@ -85,7 +85,7 @@ files are JSONs that follow this structure (represented in TypeScript):
     }
 ]
 ```
-- **`name`**: Full path from the virtual root to the file.
+- **`path`**: Full path from the virtual root to the file.
 - **`index`**: Information indicating where the virtual file actually is. In this
 case it contains the package, file size and index for that file.
 - **`package`**: Path from this OROI file to the asset package containing the desired file. One OROI file can index several packages (and web resources).
@@ -106,7 +106,7 @@ The `index` object of web-based resources follows this structure:
 ```ts
 [
     {
-        name: string,
+        path: string,
         index: {
             url: string,
             hash: string | null
