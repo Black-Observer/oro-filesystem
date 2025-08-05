@@ -35,6 +35,8 @@ impl BoundChecker {
         return false;
     }
 
+    // TODO: Decide what to do with this function once secure_path is fully implemented
+    #[allow(dead_code)]
     /// Checks if a specific path is inside the directory of this Bound Checker.
     /// This function returns [`Err`] if there's any error while reading the specified
     /// `path`.

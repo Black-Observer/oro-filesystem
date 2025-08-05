@@ -14,11 +14,11 @@ pub enum FilesystemType {
 }
 
 /// Configuration for Obstruction Filesystem. It has three attributes:
-/// - `root`: Relative (starting at executable's directory) path to the "root" of the virtual filesystem. `./` by default.
+/// - `path`: Relative (starting at executable's directory) path to the "root" of the virtual filesystem. `./` by default.
 /// - `index`: The deserialized indices file. None in [`FilesystemType::Filesystem`] configurations, Some in any Indexed configuration (Aura or AssetPackage)
 #[derive(Debug)]
 pub struct FilesystemConfig {
-    root: String,
+    path: String,
     index: Option<AssetMap>
 }
 
@@ -28,14 +28,14 @@ impl FilesystemConfig {
     pub fn new() -> FilesystemResult<Self> {
         let root = Self::get_usable_root("");
         let index = Self::autodetect_filesystem(&root)?;
-        Ok(FilesystemConfig { root, index })
+        Ok(FilesystemConfig { path: root, index })
     }
     /// Constructs a configuration object with a root and an
     /// automatically detected filesystem type.
     pub fn with_root(root: &str) -> FilesystemResult<Self> {
         let root = Self::get_usable_root(root);
         let index = Self::autodetect_filesystem(&root)?;
-        Ok(FilesystemConfig { root, index })
+        Ok(FilesystemConfig { path: root, index })
     }
     
     /// Returns the type of Filesystem in this configuration
@@ -46,14 +46,49 @@ impl FilesystemConfig {
         }
     }
     /// Returns the path to the virtual filesystem.
-    pub fn root(&self) -> String {
-        self.root.clone()
+    pub fn path(&self) -> String {
+        self.path.clone()
     }
+
+    // TODO: Restructure Config and Readers, this function shouldn't exist
     /// Generates a path by concatenating the root to the
-    /// path passed as parameter
-    pub fn path(&self, path: &str) -> String {
-        let c = self.root.clone();
-        c + path
+    /// path passed as parameter.   
+    /// 
+    /// You shouldn't use this function manually, to read
+    /// paths from a Virtual Filesystem, use [`crate::read`]
+    /// or [`crate::read_to_string`]
+    /// 
+    /// This function returns [`None`] if the FS Type is not [`FilesystemType::Filesystem`] because
+    /// otherwise the function would generate an invalid path.  
+    /// The Filesystem Type can be checked with [`FilesystemConfig::fs_type`]
+    pub fn to_path(&self, path: &str) -> Option<String> {
+        if let FilesystemType::Filesystem = self.fs_type() {
+            let c = self.path.clone();
+            Some(c + path)
+        } else {
+            None
+        }
+    }
+
+    /// Turns the Asset Map that Indexed configurations have
+    /// back into an Index File and returns it.
+    /// 
+    /// This function returns [`None`] if the FS Type is not [`FilesystemType::Indexed`].
+    /// Unindexed filesystems don't use Asset Maps.   
+    /// The Filesystem Type can be checked with [`FilesystemConfig::fs_type`]
+    /// 
+    /// # Do not use this!
+    /// 
+    /// This is meant to be used to extend the functionality
+    /// of ORO Filesystem or translate local Asset Pack indices
+    /// into or from AURA files.
+    pub fn __get_raw_index_file(&self) -> Option<IndexFile> {
+        if let Some(asset_map) = &self.index {
+            let index_file: IndexFile = asset_map.into();
+            Some(index_file)
+        } else {
+            None
+        }
     }
 
     /// Returns the index information for a file.   
@@ -61,7 +96,8 @@ impl FilesystemConfig {
     /// Key passed as a parameter.
     /// 
     /// This can fail if a filesystem is unindexed (like the native filesystem),
-    /// or if the file is not found.
+    /// or if the file is not found. Even if the filesystem is unindexed, this
+    /// function won't panic.
     pub fn get_index_for_file(&self, path: &str) -> FilesystemResult<IndexType> {
         match &self.index {
             Some(asset_map) => {

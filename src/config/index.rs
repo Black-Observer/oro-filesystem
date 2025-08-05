@@ -85,6 +85,23 @@ impl From<AssetMap> for IndexFile {
         }
     }
 }
+impl From<&AssetMap> for IndexFile {
+    /// Constructs an [`IndexFile`] from an [`AssetMap`].
+    /// This transformation cannot fail because:
+    /// 
+    /// - Indices cannot be negative in `u64` values
+    /// - Maps can't contain duplicate keys (no two files share the same path)
+    fn from(value: &AssetMap) -> Self {
+        IndexFile {
+        files: value
+            .iter()
+            .map(|(map_key, map_value)| {
+                IndexEntry::new(map_key.to_owned(), map_value.to_owned())
+            })
+            .collect()
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
